@@ -3,10 +3,10 @@
 set -e
 cd $(dirname $0)
 HERE=`readlink -e .`
-TARGET=http://nuxeo1:8080/nuxeo
+TARGET=https://benchmark.cloud.nuxeo.com/nuxeo
 NUXEO_GIT=https://github.com/nuxeo/nuxeo.git
 SCRIPT_ROOT="/ssd/nuxeo.git"
-SCRIPT_DIR="nuxeo-distribution/nuxeo-jsf-ui-gatling-tests"
+SCRIPT_DIR="ftests/nuxeo-server-gatling-tests/"
 SCRIPT_PATH="$SCRIPT_ROOT/$SCRIPT_DIR"
 SCRIPT_BRANCH=master
 REDIS_DB=7
@@ -15,14 +15,14 @@ REPORT_PATH="/ssd/static/reports"
 GAT_REPORT_VERSION=3.0-SNAPSHOT
 GAT_REPORT_JAR=/ssd/data/maven/repository/org/nuxeo/tools/gatling-report/${GAT_REPORT_VERSION}/gatling-report-${GAT_REPORT_VERSION}-capsule-fat.jar
 REDIS_CLI="docker exec -i redis redis-cli"
-MVN="docker run -it --rm --name my-maven-project -v /etc/hosts:/etc/hosts:ro -v /ssd/data/maven:/root/.m2 -v /ssd/nuxeo.git:/usr/src/mymaven -w /usr/src/mymaven/nuxeo-distribution/nuxeo-jsf-ui-gatling-tests -e MAVEN_OPTS=-Xms3g maven:3.3-jdk-8 mvn"
+MVN="docker run -it --rm --name my-maven-project -v /etc/hosts:/etc/hosts:ro -v /ssd/data/maven:/root/.m2 -v /ssd/nuxeo.git:/usr/src/mymaven -w /usr/src/mymaven/${SCRIPT_DIR} -e MAVEN_OPTS=-Xms3g maven:3.6.3-jdk-11 mvn"
 
 function clone_bench_source() {
   if [[ -e ${SCRIPT_ROOT} ]]; then
     return;
   fi
   echo "Cloning bench script using $SCRIPT_BRANCH"
-  git clone https://github.com/nuxeo/nuxeo.git ${SCRIPT_ROOT}
+  git clone --single-branch --branch ${SCRIPT_BRANCH} https://github.com/nuxeo/nuxeo.git ${SCRIPT_ROOT}
   pushd ${SCRIPT_ROOT}
   ${MVN} -nsu install -N
   # is this necessary ?
@@ -57,7 +57,7 @@ function run_simulations() {
   ${MVN} -nsu clean
   gatling "org.nuxeo.cap.bench.Sim00Setup"
   # init user ws and give some chance to graphite to init all metrics before mass import
-  gatling "org.nuxeo.cap.bench.Sim25WarmUsersJsf"
+  # gatling "org.nuxeo.cap.bench.Sim25WarmUsersJsf"
   gatling "org.nuxeo.cap.bench.Sim10MassImport" -DnbNodes=100000
   gatling "org.nuxeo.cap.bench.Sim20CSVExport"
   gatling "org.nuxeo.cap.bench.Sim15BulkUpdateDocuments"
